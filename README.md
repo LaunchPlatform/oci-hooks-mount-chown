@@ -32,8 +32,8 @@ With these annotations, to change owner of a mount-point, here's an example of p
 podman run \
     --user 2000:2000 \
     --annotation=com.launchplatform.oci-hooks.mount-chown.data.mount-point=/data \
-    --annotation=com.launchplatform.oci-hooks.mount-chowny.data.owner=2000:2000 \
-    --annotation=com.launchplatform.oci-hooks.mount-chowny.data.policy=root-only \
+    --annotation=com.launchplatform.oci-hooks.mount-chown.data.owner=2000:2000 \
+    --annotation=com.launchplatform.oci-hooks.mount-chown.data.policy=root-only \
     --mount type=image,source=my-data-image,destination=/data,rw=true \
     -it alpine
 # Now you can write to the root folder of the image mount
