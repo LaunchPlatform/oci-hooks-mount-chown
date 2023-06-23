@@ -33,8 +33,64 @@ podman run \
     --user 2000:2000 \
     --annotation=com.launchplatform.oci-hooks.mount-chown.data.mount-point=/data \
     --annotation=com.launchplatform.oci-hooks.mount-chowny.data.owner=2000:2000 \
+    --annotation=com.launchplatform.oci-hooks.mount-chowny.data.policy=root-only \
     --mount type=image,source=my-data-image,destination=/data,rw=true \
     -it alpine
 # Now you can write to the root folder of the image mount
 touch /data/my-data.lock
 ```
+
+## Add createContainer hook directly in the OCI spec
+
+There are different ways of running a container, if you are generating OCI spec yourself and running OCI runtimes such as [crun](https://github.com/containers/crun) yourself, you can add the `createContainer` hook directly into the spec file like this:
+
+```json
+{
+  "//": "... other OCI spec content ...",
+  "hooks": {
+    "createContainer": [
+      {
+        "path": "/usr/bin/mount_chown"
+      }
+    ]
+  }
+}
+```
+
+For more information about the OCI spec schema, please see the [document here](https://github.com/opencontainers/runtime-spec/blob/48415de180cf7d5168ca53a5aa27b6fcec8e4d81/config.md#posix-platform-hooks).
+
+## Add OCI hook config
+
+Another way to add the OCI hook is to create a OCI hook config file.
+Here's an example:
+
+```json
+{
+  "version": "1.0.0",
+  "hook": {
+    "path": "/usr/bin/archive_overlay"
+  },
+  "when": {
+    "annotations": {
+        "com\\.launchplatform\\.oci-hooks\\.mount-chown\\.([^.]+)\\.mount-point": "(.+)",
+        "com\\.launchplatform\\.oci-hooks\\.mount-chown\\.([^.]+)\\.owner": "(.+)"
+    }
+  },
+  "stages": ["createContainer"]
+}
+```
+
+For more information about the OCI hooks schema, please see the [document here](https://github.com/containers/podman/blob/v3.4.7/pkg/hooks/docs/oci-hooks.5.md).
+
+# Debug
+
+To debug the hook, you can add `--log-level=debug` (or `trace` if you need more details) argument for the `archive_overlay` executable, it will print debug information.
+With OCI runtimes like [crun](https://github.com/containers/crun), you can also add an annotation like this:
+
+```
+run.oci.hooks.stderr=/path/to/stderr
+```
+
+to make the runtime redirect the stderr from the hook executable to specific file.
+Please note that podman invokes poststop hook instead of delegating it to crun, so the annotation won't work for podman.
+
