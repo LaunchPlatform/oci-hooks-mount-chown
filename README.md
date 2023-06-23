@@ -68,7 +68,7 @@ Here's an example:
 {
   "version": "1.0.0",
   "hook": {
-    "path": "/usr/bin/archive_overlay"
+    "path": "/usr/bin/mount_chown"
   },
   "when": {
     "annotations": {
