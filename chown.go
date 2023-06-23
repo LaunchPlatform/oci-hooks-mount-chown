@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	log "github.com/sirupsen/logrus"
+	"strconv"
 	"strings"
 )
 
@@ -15,9 +17,11 @@ type ChownRequest struct {
 	Name string
 	// The "destination" filed of mount point to chown
 	MountPoint string
-	// The owner to recursively set for the mount point
-	Owner string
-	// The policy
+	// The user (uid) to set for the mount point
+	User int
+	// The group (gid) to set for the mount point
+	Group int
+	// The policy for chown
 	Policy string
 }
 
@@ -27,6 +31,25 @@ const (
 	annotationOwnerArg      string = "owner"
 	annotationPolicyArg     string = "policy"
 )
+
+func parseOwner(owner string) (int, int, error) {
+	parts := strings.Split(owner, ":")
+	if len(parts) < 1 || len(parts) > 2 {
+		return 0, 0, fmt.Errorf("Expected only one or two parts in the owner but got %d instead", len(parts))
+	}
+	uid, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, err
+	}
+	if len(parts) == 1 {
+		return uid, 0, nil
+	}
+	gid, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, err
+	}
+	return uid, gid, nil
+}
 
 func parseChownRequests(annotations map[string]string) map[string]ChownRequest {
 	requests := map[string]ChownRequest{}
@@ -39,12 +62,22 @@ func parseChownRequests(annotations map[string]string) map[string]ChownRequest {
 		name, chownArg := parts[0], parts[1]
 		request, ok := requests[name]
 		if !ok {
-			request = ChownRequest{Name: name}
+			request = ChownRequest{Name: name, User: -1, Group: -1}
 		}
 		if chownArg == annotationMountPointArg {
 			request.MountPoint = value
 		} else if chownArg == annotationOwnerArg {
-			request.Owner = value
+			uid, gid, err := parseOwner(value)
+			if err != nil {
+				log.Warnf("Invalid owner argument for %s with error %s, ignored", name, err)
+				continue
+			}
+			if uid < 0 || gid < 0 {
+				log.Warnf("Invalid owner argument for %s with negative uid or gid, ignored", name)
+				continue
+			}
+			request.User = uid
+			request.Group = gid
 		} else if chownArg == annotationPolicyArg {
 			request.Policy = value
 		} else {
@@ -59,10 +92,10 @@ func parseChownRequests(annotations map[string]string) map[string]ChownRequest {
 	for _, request := range requests {
 		var emptyValue = false
 		if request.MountPoint == "" {
-			log.Warnf("Empty mount-point request argument value for %s, ignored", request.Name)
+			log.Warnf("Empty mount-point argument value for %s, ignored", request.Name)
 			emptyValue = true
 		}
-		if request.Owner == "" {
+		if request.User == -1 || request.Group == -1 {
 			log.Warnf("Empty owner argument value for %s, ignored", request.Name)
 			emptyValue = true
 		}

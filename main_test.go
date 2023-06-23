@@ -6,10 +6,10 @@ import (
 	"fmt"
 	spec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/stretchr/testify/assert"
-	"io/fs"
 	"os"
 	"path"
 	"reflect"
+	"syscall"
 	"testing"
 )
 
@@ -45,13 +45,13 @@ func Test_loadSpec(t *testing.T) {
 	assert.True(t, reflect.DeepEqual(resultSpec, specValue))
 }
 
-func Test_archiveUpperDirs(t *testing.T) {
-	srcDir, err := os.MkdirTemp("", "src")
+func Test_chownMountPoints(t *testing.T) {
+	mountDir, err := os.MkdirTemp("", "mount")
 	if err != nil {
 		t.Fatal(err)
 	}
 	nestedFileData := []byte("MOCK_CONTENT")
-	nestedFileDir := path.Join(srcDir, "nested", "dir")
+	nestedFileDir := path.Join(mountDir, "nested", "dir")
 	nestedFilePath := path.Join(nestedFileDir, "file.txt")
 	err = os.MkdirAll(nestedFileDir, 0755)
 	if err != nil {
@@ -62,10 +62,16 @@ func Test_archiveUpperDirs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	destDir, err := os.MkdirTemp("", "dest")
+	// Get mount dir info
+	f, err := os.Lstat(mountDir)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// Get current ownership
+	currentUID := int(f.Sys().(*syscall.Stat_t).Uid)
+	currentGID := int(f.Sys().(*syscall.Stat_t).Gid)
+
 	containerSpec := spec.Spec{
 		Version: spec.Version,
 		Mounts: []spec.Mount{
@@ -81,36 +87,75 @@ func Test_archiveUpperDirs(t *testing.T) {
 				},
 			},
 			{
-				Destination: "/data",
+				Destination: mountDir,
 				Source:      "/path/to/source",
 				Type:        "overlay",
 				Options: []string{
 					"lowerdir=/path/to/lower",
-					fmt.Sprintf("upperdir=%s", srcDir),
+					"upperdir=/path/to/upper",
 					"workdir=/path/to/work",
 					"private",
 				},
 			},
 		},
 	}
-	archives := map[string]ChownRequest{"/data": {MountPoint: "/data", Owner: destDir, Name: "data"}}
+	archives := map[string]ChownRequest{mountDir: {MountPoint: "/data", User: currentUID, Group: currentGID, Name: "data"}}
 	chownMountPoints(containerSpec, archives)
+	// Change own requires privilege, so it's a bit hard to assert.
+	// We set it the current uid & gid to make it easier to run for now.
+}
 
-	destNestedFileDir := path.Join(destDir, "nested", "dir")
-	destNestedFilePath := path.Join(destNestedFileDir, "file.txt")
-	resultData, err := os.ReadFile(destNestedFilePath)
+func Test_chownMountPoint(t *testing.T) {
+	mountDir, err := os.MkdirTemp("", "mount")
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, string(resultData), string(nestedFileData))
-	fileInfo, err := os.Stat(destNestedFilePath)
+	nestedFileData := []byte("MOCK_CONTENT")
+	nestedFileDir := path.Join(mountDir, "nested", "dir")
+	nestedFilePath := path.Join(nestedFileDir, "file.txt")
+	err = os.MkdirAll(nestedFileDir, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, fileInfo.Mode().Perm(), fs.FileMode(0600))
-	fileInfo, err = os.Stat(destNestedFileDir)
+	err = os.WriteFile(nestedFilePath, nestedFileData, 0600)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, fileInfo.Mode().Perm(), fs.FileMode(0755))
+
+	// Get mount dir info
+	f, err := os.Lstat(mountDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get current ownership
+	currentUID := int(f.Sys().(*syscall.Stat_t).Uid)
+	currentGID := int(f.Sys().(*syscall.Stat_t).Gid)
+
+	tests := []struct {
+		name    string
+		args    ChownRequest
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			"recursive",
+			ChownRequest{MountPoint: mountDir, User: currentUID, Group: currentGID, Policy: PolicyRecursive},
+			assert.NoError,
+		},
+		{
+			"root-only",
+			ChownRequest{MountPoint: mountDir, User: currentUID, Group: currentGID, Policy: PolicyRootOnly},
+			assert.NoError,
+		},
+		{
+			"not-exist-path",
+			ChownRequest{MountPoint: "/path/to/non-exist", User: currentUID, Group: currentGID},
+			assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.wantErr(t, chownMountPoint(tt.args), fmt.Sprintf("chownMountPoint(%v)", tt.args))
+		})
+	}
 }

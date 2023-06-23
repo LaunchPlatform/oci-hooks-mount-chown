@@ -9,7 +9,9 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 const (
@@ -41,14 +43,59 @@ func loadSpec(stateInput io.Reader) spec.Spec {
 	return containerSpec
 }
 
+func chownFile(name string, path string, file os.FileInfo, uid int, gid int) {
+	currentUID := int(file.Sys().(*syscall.Stat_t).Uid)
+	currentGID := int(file.Sys().(*syscall.Stat_t).Gid)
+	if uid == currentUID && gid == currentGID {
+		log.Infof("The same UID and GID of %s for %s found, skip", path, name)
+		return
+	}
+	err := os.Lchown(path, uid, gid)
+	if err != nil {
+		log.Errorf("Failed to chown mount-point %s for %s with error %s", path, name, err)
+	}
+}
+
+func chownMountPoint(request ChownRequest) error {
+	if request.Policy == "" {
+		request.Policy = PolicyRecursive
+	}
+	if request.Policy == PolicyRecursive {
+		err := filepath.Walk(request.MountPoint, func(filePath string, file os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			chownFile(request.Name, request.MountPoint, file, request.User, request.Group)
+			return nil
+		})
+		if err != nil {
+			log.Errorf("Failed to chown %s recursively for %s with error %s", request.MountPoint, request.Name, err)
+			return err
+		}
+	} else if request.Policy == PolicyRootOnly {
+		file, err := os.Lstat(request.MountPoint)
+		if err != nil {
+			log.Errorf("Failed to get stat of %s for %s with error %s", request.MountPoint, request.Name, err)
+			return err
+		}
+		chownFile(request.Name, request.MountPoint, file, request.User, request.Group)
+	} else {
+		log.Fatalf("Unknown policy %s", request.Policy)
+	}
+	return nil
+}
+
 func chownMountPoints(containerSpec spec.Spec, mountPointRequests map[string]ChownRequest) {
 	for _, mount := range containerSpec.Mounts {
-		_, ok := mountPointRequests[mount.Destination]
+		request, ok := mountPointRequests[mount.Destination]
 		if !ok {
 			log.Tracef("Cannot find mount point %s to chown, skip", mount.Destination)
 			continue
 		}
-		// TODO:
+		err := chownMountPoint(request)
+		if err != nil {
+			continue
+		}
 	}
 }
 
