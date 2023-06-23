@@ -134,12 +134,12 @@ func setupLogLevel() {
 
 func main() {
 	var rootCmd = &cobra.Command{
-		Use:     "archive_overlay [options]",
-		Short:   "Invoked as a poststop OCI-hooks to archive upperdir of specific overlay mount",
+		Use:     "mount_chown [options]",
+		Short:   "Invoked as a createContainer OCI-hooks to chown specific mount points",
 		Version: Version,
 		Run: func(cmd *cobra.Command, args []string) {
 			setupLogLevel()
-			log.Infof("Run archive_overlay %s", Version)
+			log.Infof("Run mount_chown %s", Version)
 			run()
 		},
 	}

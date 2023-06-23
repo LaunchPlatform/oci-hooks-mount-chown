@@ -99,8 +99,8 @@ func Test_chownMountPoints(t *testing.T) {
 			},
 		},
 	}
-	archives := map[string]ChownRequest{mountDir: {MountPoint: "/data", User: currentUID, Group: currentGID, Name: "data"}}
-	chownMountPoints(containerSpec, archives)
+	requests := map[string]ChownRequest{mountDir: {MountPoint: "/data", User: currentUID, Group: currentGID, Name: "data"}}
+	chownMountPoints(containerSpec, requests)
 	// Change own requires privilege, so it's a bit hard to assert.
 	// We set it the current uid & gid to make it easier to run for now.
 }
