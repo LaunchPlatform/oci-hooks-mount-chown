@@ -44,7 +44,7 @@ jobs:
           name: Build
           command: |
             mkdir /tmp/artifacts
-            CGO_ENABLED=0 go build -o /tmp/artifacts/archive_overlay -a -ldflags '-extldflags "-static"' .
+            CGO_ENABLED=0 go build -o /tmp/artifacts/mount_chown -a -ldflags '-extldflags "-static"' .
       - store_artifacts:
           path: /tmp/artifacts
           destination: artifacts
@@ -62,7 +62,7 @@ jobs:
           name: "Publish Release on GitHub"
           command: |
             go install github.com/tcnksm/ghr@v0.16.0
-            VERSION=$(./artifacts/archive_overlay --version | cut -d' ' -f3)
+            VERSION=$(./artifacts/mount_chown --version | cut -d' ' -f3)
             echo "Version: $VERSION"
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -generatenotes ${VERSION} ./artifacts/
 workflows:
