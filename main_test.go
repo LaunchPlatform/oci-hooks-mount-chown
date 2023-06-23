@@ -13,36 +13,21 @@ import (
 	"testing"
 )
 
-func Test_loadSpec(t *testing.T) {
+func Test_loadState(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "bundle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	specValue := spec.Spec{
+	stateValue := spec.State{
 		Version: spec.Version,
-		Mounts: []spec.Mount{
-			{
-				Destination: "/data",
-				Source:      "/path/to/source",
-				Options:     []string{"nodev"},
-			},
-		},
+		Bundle:  tempDir,
 	}
-	configData, err := json.Marshal(specValue)
+	stateData, err := json.Marshal(stateValue)
 	if err != nil {
 		t.Fatal(err)
 	}
-	configPath := path.Join(tempDir, "config.json")
-	err = os.WriteFile(configPath, configData, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-	stateData, err := json.Marshal(spec.State{Bundle: tempDir})
-	if err != nil {
-		t.Fatal(err)
-	}
-	resultSpec := loadSpec(bytes.NewReader(stateData))
-	assert.True(t, reflect.DeepEqual(resultSpec, specValue))
+	resultState := loadState(bytes.NewReader(stateData))
+	assert.True(t, reflect.DeepEqual(resultState, stateValue))
 }
 
 func Test_chownMountPoints(t *testing.T) {
@@ -72,35 +57,8 @@ func Test_chownMountPoints(t *testing.T) {
 	currentUID := int(f.Sys().(*syscall.Stat_t).Uid)
 	currentGID := int(f.Sys().(*syscall.Stat_t).Gid)
 
-	containerSpec := spec.Spec{
-		Version: spec.Version,
-		Mounts: []spec.Mount{
-			{
-				Destination: "/dev",
-				Source:      "tmpfs",
-				Type:        "tmpfs",
-				Options: []string{
-					"nosuid",
-					"strictatime",
-					"mode=755",
-					"size=65536k",
-				},
-			},
-			{
-				Destination: mountDir,
-				Source:      "/path/to/source",
-				Type:        "overlay",
-				Options: []string{
-					"lowerdir=/path/to/lower",
-					"upperdir=/path/to/upper",
-					"workdir=/path/to/work",
-					"private",
-				},
-			},
-		},
-	}
 	requests := map[string]ChownRequest{mountDir: {MountPoint: "/data", User: currentUID, Group: currentGID, Name: "data"}}
-	chownMountPoints(containerSpec, requests)
+	chownMountPoints(requests)
 	// Change own requires privilege, so it's a bit hard to assert.
 	// We set it the current uid & gid to make it easier to run for now.
 }

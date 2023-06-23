@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -23,24 +22,13 @@ var (
 	logLevel  = defaultLogLevel
 )
 
-func loadSpec(stateInput io.Reader) spec.Spec {
+func loadState(stateInput io.Reader) spec.State {
 	var state spec.State
 	err := json.NewDecoder(stateInput).Decode(&state)
 	if err != nil {
 		log.Fatalf("Failed to parse stdin with error %s", err)
 	}
-	configPath := path.Join(state.Bundle, "config.json")
-	jsonFile, err := os.Open(configPath)
-	defer jsonFile.Close()
-	if err != nil {
-		log.Fatalf("Failed to open OCI spec file %s with error %s", configPath, err)
-	}
-	var containerSpec spec.Spec
-	err = json.NewDecoder(jsonFile).Decode(&containerSpec)
-	if err != nil {
-		log.Fatalf("Failed to parse OCI spec JSON file %s with error %s", configPath, err)
-	}
-	return containerSpec
+	return state
 }
 
 func chownFile(name string, path string, file os.FileInfo, uid int, gid int) {
@@ -85,13 +73,8 @@ func chownMountPoint(request ChownRequest) error {
 	return nil
 }
 
-func chownMountPoints(containerSpec spec.Spec, mountPointRequests map[string]ChownRequest) {
-	for _, mount := range containerSpec.Mounts {
-		request, ok := mountPointRequests[mount.Destination]
-		if !ok {
-			log.Tracef("Cannot find mount point %s to chown, skip", mount.Destination)
-			continue
-		}
+func chownMountPoints(mountPointRequests map[string]ChownRequest) {
+	for _, request := range mountPointRequests {
 		err := chownMountPoint(request)
 		if err != nil {
 			continue
@@ -100,14 +83,14 @@ func chownMountPoints(containerSpec spec.Spec, mountPointRequests map[string]Cho
 }
 
 func run() {
-	containerSpec := loadSpec(os.Stdin)
-	destRequests := parseChownRequests(containerSpec.Annotations)
+	containerState := loadState(os.Stdin)
+	destRequests := parseChownRequests(containerState.Annotations)
 	requestsJson, err := json.Marshal(destRequests)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Debugf("Parsed requests: %s", string(requestsJson))
-	chownMountPoints(containerSpec, destRequests)
+	chownMountPoints(destRequests)
 	log.Infof("Done")
 }
 
