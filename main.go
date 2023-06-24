@@ -40,42 +40,42 @@ func chownFile(name string, path string, file os.FileInfo, uid int, gid int) {
 	}
 	err := os.Lchown(path, uid, gid)
 	if err != nil {
-		log.Errorf("Failed to chown mount-point %s for %s with error %s", path, name, err)
+		log.Errorf("Failed to chown path %s for %s with error %s", path, name, err)
 	}
 }
 
-func chownMountPoint(request ChownRequest) error {
+func doChownRequest(request ChownRequest) error {
 	if request.Policy == "" {
 		request.Policy = PolicyRecursive
 	}
 	if request.Policy == PolicyRecursive {
-		err := filepath.Walk(request.MountPoint, func(filePath string, file os.FileInfo, err error) error {
+		err := filepath.Walk(request.Path, func(filePath string, file os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			chownFile(request.Name, request.MountPoint, file, request.User, request.Group)
+			chownFile(request.Name, request.Path, file, request.User, request.Group)
 			return nil
 		})
 		if err != nil {
-			log.Errorf("Failed to chown %s recursively for %s with error %s", request.MountPoint, request.Name, err)
+			log.Errorf("Failed to chown %s recursively for %s with error %s", request.Path, request.Name, err)
 			return err
 		}
 	} else if request.Policy == PolicyRootOnly {
-		file, err := os.Lstat(request.MountPoint)
+		file, err := os.Lstat(request.Path)
 		if err != nil {
-			log.Errorf("Failed to get stat of %s for %s with error %s", request.MountPoint, request.Name, err)
+			log.Errorf("Failed to get stat of %s for %s with error %s", request.Path, request.Name, err)
 			return err
 		}
-		chownFile(request.Name, request.MountPoint, file, request.User, request.Group)
+		chownFile(request.Name, request.Path, file, request.User, request.Group)
 	} else {
 		log.Fatalf("Unknown policy %s", request.Policy)
 	}
 	return nil
 }
 
-func chownMountPoints(mountPointRequests map[string]ChownRequest) {
-	for _, request := range mountPointRequests {
-		err := chownMountPoint(request)
+func chownRequests(requests map[string]ChownRequest) {
+	for _, request := range requests {
+		err := doChownRequest(request)
 		if err != nil {
 			continue
 		}
@@ -90,7 +90,7 @@ func run() {
 		log.Fatal(err)
 	}
 	log.Debugf("Parsed requests: %s", string(requestsJson))
-	chownMountPoints(destRequests)
+	chownRequests(destRequests)
 	log.Infof("Done")
 }
 

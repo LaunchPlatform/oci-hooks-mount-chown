@@ -57,8 +57,8 @@ func Test_chownMountPoints(t *testing.T) {
 	currentUID := int(f.Sys().(*syscall.Stat_t).Uid)
 	currentGID := int(f.Sys().(*syscall.Stat_t).Gid)
 
-	requests := map[string]ChownRequest{mountDir: {MountPoint: "/data", User: currentUID, Group: currentGID, Name: "data"}}
-	chownMountPoints(requests)
+	requests := map[string]ChownRequest{mountDir: {Path: "/data", User: currentUID, Group: currentGID, Name: "data"}}
+	chownRequests(requests)
 	// Change own requires privilege, so it's a bit hard to assert.
 	// We set it the current uid & gid to make it easier to run for now.
 }
@@ -97,23 +97,23 @@ func Test_chownMountPoint(t *testing.T) {
 	}{
 		{
 			"recursive",
-			ChownRequest{MountPoint: mountDir, User: currentUID, Group: currentGID, Policy: PolicyRecursive},
+			ChownRequest{Path: mountDir, User: currentUID, Group: currentGID, Policy: PolicyRecursive},
 			assert.NoError,
 		},
 		{
 			"root-only",
-			ChownRequest{MountPoint: mountDir, User: currentUID, Group: currentGID, Policy: PolicyRootOnly},
+			ChownRequest{Path: mountDir, User: currentUID, Group: currentGID, Policy: PolicyRootOnly},
 			assert.NoError,
 		},
 		{
 			"not-exist-path",
-			ChownRequest{MountPoint: "/path/to/non-exist", User: currentUID, Group: currentGID},
+			ChownRequest{Path: "/path/to/non-exist", User: currentUID, Group: currentGID},
 			assert.Error,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.wantErr(t, chownMountPoint(tt.args), fmt.Sprintf("chownMountPoint(%v)", tt.args))
+			tt.wantErr(t, doChownRequest(tt.args), fmt.Sprintf("doChownRequest(%v)", tt.args))
 		})
 	}
 }

@@ -15,21 +15,21 @@ const (
 type ChownRequest struct {
 	// The name of chown
 	Name string
-	// The "destination" filed of mount point to chown
-	MountPoint string
-	// The user (uid) to set for the mount point
+	// The target path
+	Path string
+	// The user (uid) to set for the path
 	User int
-	// The group (gid) to set for the mount point
+	// The group (gid) to set for the path
 	Group int
 	// The policy for chown
 	Policy string
 }
 
 const (
-	annotationPrefix        string = "com.launchplatform.oci-hooks.mount-chown."
-	annotationMountPointArg string = "mount-point"
-	annotationOwnerArg      string = "owner"
-	annotationPolicyArg     string = "policy"
+	annotationPrefix    string = "com.launchplatform.oci-hooks.mount-chown."
+	annotationPathArg   string = "path"
+	annotationOwnerArg  string = "owner"
+	annotationPolicyArg string = "policy"
 )
 
 func parseOwner(owner string) (int, int, error) {
@@ -64,8 +64,8 @@ func parseChownRequests(annotations map[string]string) map[string]ChownRequest {
 		if !ok {
 			request = ChownRequest{Name: name, User: -1, Group: -1}
 		}
-		if chownArg == annotationMountPointArg {
-			request.MountPoint = value
+		if chownArg == annotationPathArg {
+			request.Path = value
 		} else if chownArg == annotationOwnerArg {
 			uid, gid, err := parseOwner(value)
 			if err != nil {
@@ -87,12 +87,11 @@ func parseChownRequests(annotations map[string]string) map[string]ChownRequest {
 		requests[name] = request
 	}
 
-	// Convert map from using name as the key to use mount-point instead
-	mountPointRequests := map[string]ChownRequest{}
+	filteredRequests := map[string]ChownRequest{}
 	for _, request := range requests {
 		var emptyValue = false
-		if request.MountPoint == "" {
-			log.Warnf("Empty mount-point argument value for %s, ignored", request.Name)
+		if request.Path == "" {
+			log.Warnf("Empty path argument value for %s, ignored", request.Name)
 			emptyValue = true
 		}
 		if request.User == -1 || request.Group == -1 {
@@ -106,7 +105,7 @@ func parseChownRequests(annotations map[string]string) map[string]ChownRequest {
 		if emptyValue {
 			continue
 		}
-		mountPointRequests[request.MountPoint] = request
+		filteredRequests[request.Path] = request
 	}
-	return mountPointRequests
+	return filteredRequests
 }
