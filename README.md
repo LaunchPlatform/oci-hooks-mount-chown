@@ -12,9 +12,9 @@ Before that issue is closed, or say if one needs to chown for any mount point in
 
 To use this hook for changing the own of a mount point, there are a few special annotations you can add to the container:
 
-- com.launchplatform.oci-hooks.mount-chown.<NAME>.path
-- com.launchplatform.oci-hooks.mount-chown.<NAME>.owner
-- com.launchplatform.oci-hooks.mount-chown.<NAME>.policy (optional)
+- com.launchplatform.oci-hooks.mount-chown.&lt;NAME&gt;.path
+- com.launchplatform.oci-hooks.mount-chown.&lt;NAME&gt;.owner
+- com.launchplatform.oci-hooks.mount-chown.&lt;NAME&gt;.policy (optional)
 
 The `NAME` can be any valid annotation string without a dot in it.
 The `path` and `owner` annotations with the same name need to appear in pairs, otherwise it will be ignored.
