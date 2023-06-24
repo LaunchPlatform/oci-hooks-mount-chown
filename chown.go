@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -65,6 +66,14 @@ func parseChownRequests(annotations map[string]string) map[string]ChownRequest {
 			request = ChownRequest{Name: name, User: -1, Group: -1}
 		}
 		if chownArg == annotationPathArg {
+			absPath, err := filepath.Abs(value)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if !filepath.IsAbs(value) || absPath != value {
+				log.Warnf("Invalid path argument %s for %s, only abs path allowed, ignored", value, name)
+				continue
+			}
 			request.Path = value
 		} else if chownArg == annotationOwnerArg {
 			uid, gid, err := parseOwner(value)

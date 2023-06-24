@@ -76,6 +76,24 @@ func Test_parseChownRequests(t *testing.T) {
 		},
 		},
 		{
+			"relative-path", args{annotations: map[string]string{
+			"com.launchplatform.oci-hooks.mount-chown.data.path":  "/path/../../../../etc/passwd",
+			"com.launchplatform.oci-hooks.mount-chown.data.owner": "2000:2000",
+		}}, map[string]ChownRequest{},
+		},
+		{
+			"leading-relative-path", args{annotations: map[string]string{
+			"com.launchplatform.oci-hooks.mount-chown.data.path":  "./path/to/root",
+			"com.launchplatform.oci-hooks.mount-chown.data.owner": "2000:2000",
+		}}, map[string]ChownRequest{},
+		},
+		{
+			"evil-relative-path", args{annotations: map[string]string{
+			"com.launchplatform.oci-hooks.mount-chown.data.path":  "../../../etc/passwd",
+			"com.launchplatform.oci-hooks.mount-chown.data.owner": "2000:2000",
+		}}, map[string]ChownRequest{},
+		},
+		{
 			"invalid-policy", args{annotations: map[string]string{
 			"com.launchplatform.oci-hooks.mount-chown.data.path":   "/path/to/root",
 			"com.launchplatform.oci-hooks.mount-chown.data.owner":  "2000:2000",

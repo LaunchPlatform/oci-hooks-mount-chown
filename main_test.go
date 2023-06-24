@@ -13,25 +13,45 @@ import (
 	"testing"
 )
 
-func Test_loadState(t *testing.T) {
+func Test_loadSpec(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "bundle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	stateValue := spec.State{
+	specValue := spec.Spec{
 		Version: spec.Version,
-		Bundle:  tempDir,
+		Mounts: []spec.Mount{
+			{
+				Destination: "/data",
+				Source:      "/path/to/source",
+				Options:     []string{"nodev"},
+			},
+		},
 	}
-	stateData, err := json.Marshal(stateValue)
+	configData, err := json.Marshal(specValue)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resultState := loadState(bytes.NewReader(stateData))
-	assert.True(t, reflect.DeepEqual(resultState, stateValue))
+	configPath := path.Join(tempDir, "config.json")
+	err = os.WriteFile(configPath, configData, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stateData, err := json.Marshal(spec.State{Bundle: tempDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resultSpec := loadSpec(bytes.NewReader(stateData))
+	assert.True(t, reflect.DeepEqual(resultSpec, specValue))
 }
 
-func Test_chownMountPoints(t *testing.T) {
-	mountDir, err := os.MkdirTemp("", "mount")
+func Test_chownRequests(t *testing.T) {
+	rootDir, err := os.MkdirTemp("", "root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mountDir := path.Join(rootDir, "data")
+	err = os.MkdirAll(mountDir, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,13 +78,18 @@ func Test_chownMountPoints(t *testing.T) {
 	currentGID := int(f.Sys().(*syscall.Stat_t).Gid)
 
 	requests := map[string]ChownRequest{mountDir: {Path: "/data", User: currentUID, Group: currentGID, Name: "data"}}
-	chownRequests(requests)
+	chownRequests(rootDir, requests)
 	// Change own requires privilege, so it's a bit hard to assert.
 	// We set it the current uid & gid to make it easier to run for now.
 }
 
-func Test_chownMountPoint(t *testing.T) {
-	mountDir, err := os.MkdirTemp("", "mount")
+func Test_doChownRequest(t *testing.T) {
+	rootDir, err := os.MkdirTemp("", "root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mountDir := path.Join(rootDir, "data")
+	err = os.MkdirAll(mountDir, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,12 +122,12 @@ func Test_chownMountPoint(t *testing.T) {
 	}{
 		{
 			"recursive",
-			ChownRequest{Path: mountDir, User: currentUID, Group: currentGID, Policy: PolicyRecursive},
+			ChownRequest{Path: "/data", User: currentUID, Group: currentGID, Policy: PolicyRecursive},
 			assert.NoError,
 		},
 		{
 			"root-only",
-			ChownRequest{Path: mountDir, User: currentUID, Group: currentGID, Policy: PolicyRootOnly},
+			ChownRequest{Path: "/data", User: currentUID, Group: currentGID, Policy: PolicyRootOnly},
 			assert.NoError,
 		},
 		{
@@ -113,7 +138,7 @@ func Test_chownMountPoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.wantErr(t, doChownRequest(tt.args), fmt.Sprintf("doChownRequest(%v)", tt.args))
+			tt.wantErr(t, doChownRequest(rootDir, tt.args), fmt.Sprintf("doChownRequest(%v)", tt.args))
 		})
 	}
 }
