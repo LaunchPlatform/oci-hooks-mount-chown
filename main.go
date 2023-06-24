@@ -78,23 +78,25 @@ func doChownRequest(containerRoot string, request ChownRequest) error {
 	if request.Policy == "" {
 		request.Policy = PolicyRecursive
 	}
-	if request.Policy == PolicyRecursive {
-		err := filepath.Walk(chownPath, func(filePath string, file os.FileInfo, err error) error {
+	if request.User > 0 && request.Group > 0 {
+		if request.Policy == PolicyRecursive {
+			err := filepath.Walk(chownPath, func(filePath string, file os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				chownFile(request.Name, filePath, file, request.User, request.Group)
+				return nil
+			})
 			if err != nil {
+				log.Errorf("Failed to chown %s recursively for %s with error %s", request.Path, request.Name, err)
 				return err
 			}
-			chownFile(request.Name, filePath, file, request.User, request.Group)
-			return nil
-		})
-		if err != nil {
-			log.Errorf("Failed to chown %s recursively for %s with error %s", request.Path, request.Name, err)
-			return err
-		}
-	} else if request.Policy == PolicyRootOnly {
+		} else if request.Policy == PolicyRootOnly {
 
-		chownFile(request.Name, chownPath, file, request.User, request.Group)
-	} else {
-		log.Fatalf("Unknown policy %s", request.Policy)
+			chownFile(request.Name, chownPath, file, request.User, request.Group)
+		} else {
+			log.Fatalf("Unknown policy %s", request.Policy)
+		}
 	}
 	return nil
 }

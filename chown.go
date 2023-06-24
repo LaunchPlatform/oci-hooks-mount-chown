@@ -114,8 +114,8 @@ func parseChownRequests(annotations map[string]string) map[string]ChownRequest {
 			log.Warnf("Empty path argument value for %s, ignored", request.Name)
 			emptyValue = true
 		}
-		if request.User == -1 || request.Group == -1 {
-			log.Warnf("Empty owner argument value for %s, ignored", request.Name)
+		if (request.User == -1 || request.Group == -1) && request.Mode == 0 {
+			log.Warnf("Empty owner and mode argument value for %s, ignored", request.Name)
 			emptyValue = true
 		}
 		if request.Policy != "" && request.Policy != PolicyRecursive && request.Policy != PolicyRootOnly {

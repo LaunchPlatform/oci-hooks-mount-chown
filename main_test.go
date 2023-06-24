@@ -131,6 +131,11 @@ func Test_doChownRequest(t *testing.T) {
 			assert.NoError,
 		},
 		{
+			"mode-only",
+			ChownRequest{Path: "/data", User: -1, Group: -1, Mode: 0755},
+			assert.NoError,
+		},
+		{
 			"not-exist-path",
 			ChownRequest{Path: "/path/to/non-exist", User: currentUID, Group: currentGID},
 			assert.Error,
