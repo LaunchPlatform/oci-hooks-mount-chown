@@ -116,7 +116,7 @@ func run() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Debugf("Parsed requests: %s", string(requestsJson))
+	log.Infof("Parsed requests: %s", string(requestsJson))
 	chownRequests(containerSpec.Root.Path, requests)
 	log.Infof("Done")
 }
