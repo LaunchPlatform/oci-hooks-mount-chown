@@ -43,13 +43,19 @@ func loadSpec(stateInput io.Reader) spec.Spec {
 	return containerSpec
 }
 
-func chownFile(name string, path string, file os.FileInfo, uid int, gid int) {
+func chownFile(name string, path string, file os.FileInfo, uid int, gid int) error {
 	currentUID := int(file.Sys().(*syscall.Stat_t).Uid)
 	currentGID := int(file.Sys().(*syscall.Stat_t).Gid)
 	if uid == currentUID && gid == currentGID {
 		log.Infof("The same UID and GID of %s for %s found, skip", path, name)
-		return
+		return nil
 	}
+	err := os.Lchown(path, uid, gid)
+	if err != nil {
+		log.Errorf("Failed to chown path %s for %s with error %s", path, name, err)
+		return err
+	}
+	return err
 }
 
 func doChownRequest(containerRoot string, request ChownRequest) error {
@@ -75,7 +81,10 @@ func doChownRequest(containerRoot string, request ChownRequest) error {
 			if err != nil {
 				log.Errorf("Failed to chown path %s for %s with error %s", chownPath, request.Name, err)
 			}
+			log.Infof("Chmod for %s done", request.Name)
 		}
+	} else {
+		log.Infof("Skip chmod for %s, no mode provided", request.Name)
 	}
 
 	if request.Policy == "" {
@@ -94,11 +103,18 @@ func doChownRequest(containerRoot string, request ChownRequest) error {
 				log.Errorf("Failed to chown %s recursively for %s with error %s", request.Path, request.Name, err)
 				return err
 			}
+			log.Infof("Chown for %s with recursive policy is done", request.Name)
 		} else if request.Policy == PolicyRootOnly {
-			chownFile(request.Name, chownPath, file, request.User, request.Group)
+			err = chownFile(request.Name, chownPath, file, request.User, request.Group)
+			if err != nil {
+				return err
+			}
+			log.Infof("Chown for %s with root-only policy is done", request.Name)
 		} else {
 			log.Fatalf("Unknown policy %s", request.Policy)
 		}
+	} else {
+		log.Infof("Skip chown for %s, no user and group provided", request.Name)
 	}
 	log.Infof("Chown %s is done", request.Name)
 	return nil
