@@ -12,12 +12,12 @@ Before that issue is closed, or say if one needs to chown for any mount point in
 
 To use this hook for changing the own of a mount point, there are a few special annotations you can add to the container:
 
-- com.launchplatform.oci-hooks.mount-chown.<NAME>.mount-point
+- com.launchplatform.oci-hooks.mount-chown.<NAME>.path
 - com.launchplatform.oci-hooks.mount-chown.<NAME>.owner
 - com.launchplatform.oci-hooks.mount-chown.<NAME>.policy (optional)
 
 The `NAME` can be any valid annotation string without a dot in it.
-The `mount-point` and `owner` annotations with the same name need to appear in pairs, otherwise it will be ignored.
+The `path` and `owner` annotations with the same name need to appear in pairs, otherwise it will be ignored.
 The owner value can be a single uid integer value or uid plus gid, with a format like `UID[:GID]`.
 Please note that username is not supported, only integer value works.
 The `policy` annoation is optional, there are two available options:
@@ -26,12 +26,12 @@ The `policy` annoation is optional, there are two available options:
 - `root-only` - chown only for the root folder of mount-pooint
 
 If the policy value is not provided, `recursive` will be used by default.
-With these annotations, to change owner of a mount-point, here's an example of podman command you can run:
+With these annotations, to change owner of a path, here's an example of podman command you can run:
 
 ```bash
 podman run \
     --user 2000:2000 \
-    --annotation=com.launchplatform.oci-hooks.mount-chown.data.mount-point=/data \
+    --annotation=com.launchplatform.oci-hooks.mount-chown.data.path=/data \
     --annotation=com.launchplatform.oci-hooks.mount-chown.data.owner=2000:2000 \
     --annotation=com.launchplatform.oci-hooks.mount-chown.data.policy=root-only \
     --mount type=image,source=my-data-image,destination=/data,rw=true \
@@ -72,7 +72,7 @@ Here's an example:
   },
   "when": {
     "annotations": {
-        "com\\.launchplatform\\.oci-hooks\\.mount-chown\\.([^.]+)\\.mount-point": "(.+)",
+        "com\\.launchplatform\\.oci-hooks\\.mount-chown\\.([^.]+)\\.path": "(.+)",
         "com\\.launchplatform\\.oci-hooks\\.mount-chown\\.([^.]+)\\.owner": "(.+)"
     }
   },
