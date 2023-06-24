@@ -15,6 +15,7 @@ To use this hook for changing the own of a mount point, there are a few special 
 - com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.path
 - com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.owner
 - com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.policy (optional)
+- com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.mode (optional)
 
 The `NAME` can be any valid annotation string without a dot in it.
 The `path` and `owner` annotations with the same name need to appear in pairs, otherwise it will be ignored.
@@ -39,6 +40,10 @@ podman run \
 # Now you can write to the root folder of the image mount
 touch /data/my-data.lock
 ```
+
+The `mode` option can also be used. However, please note that it only changes the mode of root path, it doesn't apply recursively regardless what the `policy` says.
+Either one of `owner` or `mode` needs to be provided.
+For now podman's image mount comes with `0555` as the root folder, without changing the owner, changing the mode to `0777` might help.
 
 ## Add createContainer hook directly in the OCI spec
 
