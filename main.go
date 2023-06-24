@@ -78,7 +78,7 @@ func doChownRequest(containerRoot string, request ChownRequest) error {
 	if request.Policy == "" {
 		request.Policy = PolicyRecursive
 	}
-	if request.User > 0 && request.Group > 0 {
+	if request.User >= 0 && request.Group >= 0 {
 		if request.Policy == PolicyRecursive {
 			err := filepath.Walk(chownPath, func(filePath string, file os.FileInfo, err error) error {
 				if err != nil {
@@ -92,7 +92,6 @@ func doChownRequest(containerRoot string, request ChownRequest) error {
 				return err
 			}
 		} else if request.Policy == PolicyRootOnly {
-
 			chownFile(request.Name, chownPath, file, request.User, request.Group)
 		} else {
 			log.Fatalf("Unknown policy %s", request.Policy)
@@ -141,6 +140,7 @@ func setupLogLevel() {
 		os.Exit(1)
 	}
 	log.SetLevel(level)
+	log.Infof("Set log level to %s", logLevel)
 }
 
 func main() {
