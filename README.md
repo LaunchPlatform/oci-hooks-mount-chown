@@ -44,6 +44,18 @@ touch /data/my-data.lock
 The `mode` option can also be used. However, please note that it only changes the mode of root path, it doesn't apply recursively regardless what the `policy` says.
 Either one of `owner` or `mode` needs to be provided.
 For now podman's image mount comes with `0555` as the root folder, without changing the owner, changing the mode to `0777` might help.
+Here's an example:
+
+```bash
+podman run \
+    --user 2000:2000 \
+    --annotation=com.launchplatform.oci-hooks.mount-chown.data.path=/data \
+    --annotation=com.launchplatform.oci-hooks.mount-chown.data.mode=777 \
+    --mount type=image,source=my-data-image,destination=/data,rw=true \
+    -it alpine
+# Now you can write to the root folder of the image mount
+touch /data/my-data.lock
+```
 
 ## Add createContainer hook directly in the OCI spec
 
