@@ -142,3 +142,49 @@ func Test_doChownRequest(t *testing.T) {
 		})
 	}
 }
+
+func Test_doChownRequestForMode(t *testing.T) {
+	rootDir, err := os.MkdirTemp("", "root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mountDir := path.Join(rootDir, "data")
+	err = os.MkdirAll(mountDir, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nestedFileData := []byte("MOCK_CONTENT")
+	nestedFileDir := path.Join(mountDir, "nested", "dir")
+	nestedFilePath := path.Join(nestedFileDir, "file.txt")
+	err = os.MkdirAll(nestedFileDir, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(nestedFilePath, nestedFileData, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get mount dir info
+	f, err := os.Lstat(mountDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get current ownership
+	currentUID := int(f.Sys().(*syscall.Stat_t).Uid)
+	currentGID := int(f.Sys().(*syscall.Stat_t).Gid)
+
+	request := ChownRequest{Path: "/data", User: currentUID, Group: currentGID, Policy: PolicyRootOnly, Mode: 0700}
+	err = doChownRequest(rootDir, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err = os.Lstat(mountDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, os.FileMode(0700), f.Mode().Perm())
+}

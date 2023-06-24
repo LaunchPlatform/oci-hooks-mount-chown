@@ -50,10 +50,6 @@ func chownFile(name string, path string, file os.FileInfo, uid int, gid int) {
 		log.Infof("The same UID and GID of %s for %s found, skip", path, name)
 		return
 	}
-	err := os.Lchown(path, uid, gid)
-	if err != nil {
-		log.Errorf("Failed to chown path %s for %s with error %s", path, name, err)
-	}
 }
 
 func doChownRequest(containerRoot string, request ChownRequest) error {
@@ -61,6 +57,24 @@ func doChownRequest(containerRoot string, request ChownRequest) error {
 	// so we need to chown based on the path to the container root
 	// ref: https://github.com/opencontainers/runtime-spec/blob/48415de180cf7d5168ca53a5aa27b6fcec8e4d81/config.md#createcontainer-hooks
 	chownPath := path.Join(containerRoot, strings.TrimLeft(request.Path, "/"))
+
+	file, err := os.Lstat(chownPath)
+	if err != nil {
+		log.Errorf("Failed to get stat of %s for %s with error %s", request.Path, request.Name, err)
+		return err
+	}
+	currentMode := file.Mode().Perm()
+	if request.Mode != 0 {
+		if currentMode == request.Mode {
+			log.Debugf("The same mode of %s for %s found, skip", chownPath, request.Name)
+		} else {
+			err := os.Chmod(chownPath, request.Mode)
+			if err != nil {
+				log.Errorf("Failed to chown path %s for %s with error %s", chownPath, request.Name, err)
+			}
+		}
+	}
+
 	if request.Policy == "" {
 		request.Policy = PolicyRecursive
 	}
@@ -77,11 +91,7 @@ func doChownRequest(containerRoot string, request ChownRequest) error {
 			return err
 		}
 	} else if request.Policy == PolicyRootOnly {
-		file, err := os.Lstat(chownPath)
-		if err != nil {
-			log.Errorf("Failed to get stat of %s for %s with error %s", request.Path, request.Name, err)
-			return err
-		}
+
 		chownFile(request.Name, chownPath, file, request.User, request.Group)
 	} else {
 		log.Fatalf("Unknown policy %s", request.Policy)

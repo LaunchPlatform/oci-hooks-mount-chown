@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -22,6 +23,8 @@ type ChownRequest struct {
 	User int
 	// The group (gid) to set for the path
 	Group int
+	// The mode of file path to change
+	Mode os.FileMode
 	// The policy for chown
 	Policy string
 }
@@ -31,6 +34,7 @@ const (
 	annotationPathArg   string = "path"
 	annotationOwnerArg  string = "owner"
 	annotationPolicyArg string = "policy"
+	annotationModeArg   string = "mode"
 )
 
 func parseOwner(owner string) (int, int, error) {
@@ -89,6 +93,13 @@ func parseChownRequests(annotations map[string]string) map[string]ChownRequest {
 			request.Group = gid
 		} else if chownArg == annotationPolicyArg {
 			request.Policy = value
+		} else if chownArg == annotationModeArg {
+			mode, err := strconv.ParseInt(value, 8, 32)
+			if err != nil {
+				log.Warnf("Invalid mode argument %s for request %s, needs to be an octal integer, ignored", value, name)
+				continue
+			}
+			request.Mode = os.FileMode(mode)
 		} else {
 			log.Warnf("Invalid chown argument %s for request %s, ignored", chownArg, name)
 			continue

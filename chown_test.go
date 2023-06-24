@@ -26,6 +26,15 @@ func Test_parseChownRequests(t *testing.T) {
 		},
 		},
 		{
+			"mode", args{annotations: map[string]string{
+			"com.launchplatform.oci-hooks.mount-chown.data.path":  "/path/to/root",
+			"com.launchplatform.oci-hooks.mount-chown.data.owner": "2000:2000",
+			"com.launchplatform.oci-hooks.mount-chown.data.mode":  "755",
+		}}, map[string]ChownRequest{
+			"/path/to/root": {Name: "data", Path: "/path/to/root", User: 2000, Group: 2000, Mode: 0o755},
+		},
+		},
+		{
 			"recursive-policy", args{annotations: map[string]string{
 			"com.launchplatform.oci-hooks.mount-chown.data.path":   "/path/to/root",
 			"com.launchplatform.oci-hooks.mount-chown.data.owner":  "2000:2000",
