@@ -14,8 +14,8 @@ To use this hook for changing the own of a mount point, there are a few special 
 
 - com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.path
 - com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.owner
-- com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.policy (optional)
-- com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.mode (optional)
+- com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.policy
+- com.launchplatform.oci-hooks.mount-chown.**&lt;NAME&gt;**.mode
 
 The `NAME` can be any valid annotation string without a dot in it.
 The `path` and `owner` annotations with the same name need to appear in pairs, otherwise it will be ignored.
