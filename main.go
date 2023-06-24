@@ -54,7 +54,7 @@ func chownFile(name string, path string, file os.FileInfo, uid int, gid int) {
 
 func doChownRequest(containerRoot string, request ChownRequest) error {
 	log.Infof(
-		"Performing chown, name=%s, path=%s, user=%d, group=%s, policy=%s, mode=%d ...",
+		"Performing chown, name=%s, path=%s, user=%d, group=%d, policy=%s, mode=%d ...",
 		request.Name, request.Path, request.User, request.Group, request.Policy, request.Mode)
 	// In createContainer stage, the pivot_root is not called yet,
 	// so we need to chown based on the path to the container root
