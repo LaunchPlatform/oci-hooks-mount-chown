@@ -77,8 +77,7 @@ Here's an example:
   },
   "when": {
     "annotations": {
-        "com\\.launchplatform\\.oci-hooks\\.mount-chown\\.([^.]+)\\.path": "(.+)",
-        "com\\.launchplatform\\.oci-hooks\\.mount-chown\\.([^.]+)\\.owner": "(.+)"
+        "com\\.launchplatform\\.oci-hooks\\.mount-chown\\.([^.]+)\\.path": "(.+)"
     }
   },
   "stages": ["createContainer"]
